@@ -15,9 +15,19 @@ export function clientToFeetCoords(
   if (!ctm) {
     return { xFt: 0, yFt: 0 };
   }
-  const transformed = pt.matrixTransform(ctm.inverse());
+  if (typeof pt.matrixTransform === 'function') {
+    const transformed = pt.matrixTransform(ctm.inverse());
+    return {
+      xFt: transformed.x / FT,
+      yFt: transformed.y / FT,
+    };
+  }
+  // Fallback for headless / simulated DOM test environments
+  const inv = ctm.inverse ? ctm.inverse() : ctm;
+  const x = (inv.a ?? 1) * clientX + (inv.c ?? 0) * clientY + (inv.e ?? 0);
+  const y = (inv.b ?? 0) * clientX + (inv.d ?? 1) * clientY + (inv.f ?? 0);
   return {
-    xFt: transformed.x / FT,
-    yFt: transformed.y / FT,
+    xFt: x / FT,
+    yFt: y / FT,
   };
 }
