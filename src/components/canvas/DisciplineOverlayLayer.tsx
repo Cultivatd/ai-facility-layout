@@ -3,6 +3,17 @@ import { useLayoutStore } from '../../store/layoutStore';
 import { useViewStore } from '../../store/viewStore';
 import { computeShellBounds, FT } from './canvasConstants';
 
+function distanceToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
+  const projX = x1 + t * dx;
+  const projY = y1 + t * dy;
+  return Math.hypot(px - projX, py - projY);
+}
+
 export const DisciplineOverlayLayer: React.FC = () => {
   const disciplineView = useViewStore((s) => s.disciplineView);
   const rooms = useLayoutStore((s) => s.layout.rooms);
@@ -14,7 +25,7 @@ export const DisciplineOverlayLayer: React.FC = () => {
   const shellBounds = computeShellBounds(shellPerimeter);
 
   if (disciplineView === 'evac-safety') {
-    // Identify exterior egress doors: either explicitly marked or within 3 ft of the shell bounding perimeter
+    // Identify exterior egress doors: marked explicitly, near bounding box, or within 2.5 ft of any exterior shell edge
     const exteriorDoors = doors.filter((d) => {
       if (d.type === 'overhead-dock' || d.type === 'cased-opening') return false;
       if (d.isExteriorEgress) return true;
@@ -22,7 +33,12 @@ export const DisciplineOverlayLayer: React.FC = () => {
       const nearSouth = Math.abs(d.y - shellBounds.maxYFt) <= 3.0;
       const nearWest = Math.abs(d.x - shellBounds.minXFt) <= 3.5;
       const nearEast = Math.abs(d.x - shellBounds.maxXFt) <= 3.5;
-      return nearNorth || nearSouth || nearWest || nearEast;
+      if (nearNorth || nearSouth || nearWest || nearEast) return true;
+
+      return shellPerimeter.some((p1, idx) => {
+        const p2 = shellPerimeter[(idx + 1) % shellPerimeter.length];
+        return distanceToSegment(d.x, d.y, p1.x, p1.y, p2.x, p2.y) <= 2.5;
+      });
     });
 
     // Find corridor spine X or default to building center X

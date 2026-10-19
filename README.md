@@ -110,7 +110,7 @@ The studio includes a core general-purpose industrial engine and **pluggable dom
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/ai-facility-layout.git
+git clone https://github.com/Cultivatd/ai-facility-layout.git
 cd ai-facility-layout
 
 # 2. Install dependencies
@@ -128,6 +128,9 @@ In the top toolbar, click **Presets** to load any of the included baseline templ
 - **General Industrial & Lab (`60' × 100'`)**: 6,000 SF light manufacturing, assembly workcells, QC metrology lab, engineering office, and pallet warehouse.
 - **Blank Rectangular Shell (`50' × 80'`)**: Clean, empty 4,000 SF building shell ready to resize and build from scratch.
 - **Showcase: Cultivation & Edible Cleanroom (`43.4' × 96.0'`)**: Comprehensive multi-zone facility showcasing all three pluggable domain modules.
+
+> [!WARNING]
+> Selecting a preset in the UI immediately syncs to and updates `src/data/facility-layout.json`. Use the **Backups** menu in the top toolbar to create manual checkpoints before switching templates.
 
 ---
 
@@ -149,7 +152,7 @@ Follow this step-by-step workflow to plan any building from a blank slate:
 
 ### Step 2: Partition Rooms & Space Programming
 1. Select the **Room** tool (`R`) from the floating toolbar or left dock.
-2. Click and drag on the canvas to place a room.
+2. Click on the canvas to drop a room footprint, then drag the bottom-right corner handle to resize or drag the room body to reposition.
 3. With the room selected, use the right-hand **Room Inspector** to customize:
    - **Name & Code**: e.g., `Assembly Cell A`, `ASM-101`.
    - **Category**: `production`, `warehouse`, `cleanroom`, `office`, `corridor`, `mechanical`, etc.
@@ -328,14 +331,13 @@ Switch sheet views instantly using the top-bar dropdown or number keys `1`–`6`
 
 | Shortcut | Action | Shortcut | Action |
 | :--- | :--- | :--- | :--- |
-| **`V`** | Select / Pointer tool | **`G`** | Toggle background snap grid |
-| **`H`** | Hand / Pan tool | **`C`** | Toggle equipment clearance zones |
-| **`R`** | Place Room tool | **`D`** | Toggle exterior dimension strings |
-| **`D`** | Place Door tool | **`U`** | Toggle PDF underlay layer |
-| **`E`** | Place Equipment tool | **`Space`** | Toggle 3D Isometric View |
-| **`W`** | Place Custom Wall tool | **`Cmd/Ctrl + Z`** | Undo |
-| **`P`** | Place Column tool | **`Cmd/Ctrl + Shift + Z`** | Redo |
-| **`1`–`6`**| Switch Discipline Sheet View | **`Shift + Drag`** | Fine 1° rotation precision |
+| **`V`** | Select / Pointer tool | **`S`** | Place Structural Partition / Column |
+| **`H`** | Hand / Pan tool | **`M`** | Tape Measure Distance tool |
+| **`R`** | Place Room tool | **`Esc`** | Cancel active tool / Return to Select |
+| **`D`** | Place Door tool | **`Cmd/Ctrl + Z`** | Undo |
+| **`E`** | Place Equipment tool | **`Cmd/Ctrl + Shift + Z`** | Redo |
+| **`Hold Space`** | Temporary Pan Canvas | **`Shift + Drag`** | Fine 1° rotation precision |
+| **`1`–`6`** | Switch Discipline Sheet View (A-100 to M-101) | | |
 
 ---
 
@@ -345,23 +347,27 @@ The layout document is structured cleanly according to TypeScript definitions in
 
 ```typescript
 interface FacilityLayoutData {
-  version: string;                    // Semantic schema version (e.g., "2.0.0")
-  enabledModules: IndustryModuleId[]; // Active modules: "cultivation" | "edible-cleanroom" | "security-compliance"
-  metadata: FacilityMetadata;         // Project name, address, architect, square footages
-  shellPerimeter: PerimeterPoint[];   // Array of { x, y } boundary vertices in decimal feet
-  rooms: FacilityRoom[];              // Partitioned spaces, categories, finishes, pressures
-  doors: FacilityDoor[];              // Single/double swing, overhead docks, sliding doors
-  equipment: FacilityEquipment[];     // Machinery, racks, benches, cameras, sinks, MEP
-  structuralElements: StructuralElement[]; // Interior demising walls, columns, dock pits
-  dimensions: FacilityDimension[];    // Exterior architectural dimension strings
-  pdfCalibration?: PdfCalibration;    // Optional raster floorplan calibration parameters
+  version: string;                          // Semantic schema version (e.g., "2.0.0")
+  enabledModules: DomainModuleId[];         // Active modules: "cultivation" | "edible-cleanroom" | "security-compliance"
+  metadata: FacilityMetadata;               // Project name, address, architect, square footages
+  shellPerimeter: Point2D[];                // Array of { x, y } boundary vertices in decimal feet
+  rooms: FacilityRoom[];                    // Partitioned spaces, categories, finishes, pressures
+  doors: FacilityDoor[];                    // Single/double swing, overhead docks, sliding doors
+  equipment: FacilityEquipment[];           // Machinery, racks, benches, cameras, sinks, MEP
+  structuralElements: FacilityStructuralElement[]; // Interior demising walls, columns, dock pits
+  dimensions: DimensionAnnotation[];        // Exterior architectural dimension strings
+  pdfCalibration?: PdfCalibration;          // Optional raster floorplan calibration parameters
 }
 ```
 
 ### Essential Units & Coordinates
 - **Units**: All dimensions (`x`, `y`, `width`, `height`, `wallHeight`, `clearanceFt`) are stored in **decimal feet** (`1.0` = 1'-0", `0.5` = 6", `0.25` = 3").
-- **Origin `(0, 0)`**: Top-left (North-West) interior corner of the building shell.
+- **Origin `(0, 0)`**: Top-left (North-West) interior reference corner of the building shell.
 - **Axes**: `+X` extends East (Width), `+Y` extends South (Length).
+- **Coordinate Anchors**:
+  - **Rooms, Equipment, Structural Elements**: `(x, y)` marks the **top-left corner** of the element in feet.
+  - **Doors**: `(x, y)` marks the **geometric center of the wall opening** in feet.
+  - **Exterior / Setback Elements**: Items outside the North or West walls (e.g. exterior security cameras, storefront entry glazing, dimension strings) naturally use negative coordinates (e.g. `y: -3.4`).
 - **Scale**: In 2D SVG space, `FT = 10` ($1\text{ foot} = 10\text{ SVG user units}$).
 
 ---
@@ -380,6 +386,12 @@ The studio provides one-click export actions in the top-right toolbar:
 ## Contributing & Open Source Standards
 
 We welcome contributions from architects, facility engineers, software developers, and AI researchers!
+Please read our **[Contributing Guide](CONTRIBUTING.md)** and **[Code of Conduct](CODE_OF_CONDUCT.md)** before submitting pull requests.
+
+### Developer Documentation & Architecture Decisions
+- **[Extending the Studio](docs/extending-the-studio.md)**: Playbook for adding new domain modules, presets, and discipline sheets.
+- **[ADR-0001: SVG Coordinate System & Scale Invariants](docs/adr/ADR-0001-svg-coordinate-system-and-scale.md)**
+- **[ADR-0002: Bidirectional Disk Sync & Concurrency Control](docs/adr/ADR-0002-bidirectional-disk-sync-architecture.md)**
 
 ### Code Standards
 - **Strict TypeScript**: No `any` types; all entities must satisfy interfaces in [`src/types/facility.ts`](src/types/facility.ts).
@@ -389,6 +401,9 @@ We welcome contributions from architects, facility engineers, software developer
 ### Development Workflow
 
 ```bash
+# Start Vite dev server with live /api/layout sync
+npm run dev
+
 # Run unit & integration test suite (Vitest)
 npm test
 
@@ -396,9 +411,9 @@ npm test
 npm run test:coverage
 
 # Typecheck the codebase
-npx tsc --noEmit
+npm run typecheck
 
-# Test production build
+# Build production bundle
 npm run build
 
 # Preview production build locally

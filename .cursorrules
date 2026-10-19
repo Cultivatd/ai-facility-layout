@@ -12,6 +12,10 @@ Always adhere to the architectural conventions and schemas described in `AGENTS.
 - **All units are in decimal feet**: `1.0` = 1'-0", `0.5` = 6", `0.25` = 3".
 - **Origin `(0, 0)`**: Top-left (North-West) interior corner of the building shell.
 - **Axes**: `+X` points East (Width), `+Y` points South (Length).
+- **Coordinate Anchors**:
+  - Rooms, equipment, structural elements anchor at **top-left `(x, y)`**.
+  - Doors anchor at the **geometric center** of the opening along the wall centerline `(x, y)`.
+  - Exterior setbacks (fences, yards, aprons) may use **negative coordinates** relative to `(0, 0)`.
 - In SVG rendering, `FT = 10` (10 SVG user units per foot).
 
 ## 3. Pluggable Industry Modules
@@ -21,8 +25,8 @@ Managed via `layout.enabledModules` in `facility-layout.json`:
 - `"security-compliance"`: Sheet `SEC-101`, Limited Access Area (`isLimitedAccess`) perimeters, 24/7 security cameras with FOV cones, badge readers, secure vaults.
 
 ## 4. Key Rules for Room & Equipment Placement
-- Keep elements inside `layout.shellPerimeter`.
+- Keep interior elements inside `layout.shellPerimeter`.
 - Maintain standard code egress clearances (typically 36" / 3.0 ft minimum for walking aisles, 8'-12' for forklift aisles).
-- Keep doors along room edges with valid `orientation` (`'horizontal' | 'vertical'`) and `swing` (`'north-east' | 'south-east' | 'south-west' | 'north-west'`).
+- Keep doors along room edges with valid `orientation` (`'horizontal' | 'vertical'`) and `swing` (`'north-east' | 'south-east' | 'south-west' | 'north-west'`). Doors anchor at opening center.
 - Ensure equipment text is readable (default `rotation: 0` for non-directional fixtures, use rotation primarily for cameras and directional equipment).
 - Refer to `AGENTS.md` for complete schema fields and prompt recipes.

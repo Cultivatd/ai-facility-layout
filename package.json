@@ -1,11 +1,17 @@
 {
   "name": "ai-facility-layout",
-  "private": true,
   "version": "1.0.0",
+  "description": "Interactive 2D Architectural CAD + 3D Isometric Facility Layout Studio built for human + AI real-time iteration",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Cultivatd/ai-facility-layout.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

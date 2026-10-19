@@ -17,17 +17,36 @@ export function formatFeetInches(feetDecimal: number): string {
 }
 
 /**
- * Parses either decimal feet ("22.67") or feet-inches ("22'-8\"", "22' 8") into decimal feet.
+ * Parses either decimal feet ("22.67"), feet-inches ("22'-8\"", "22'-8 1/2\""), or inches-only ("36\"") into decimal feet.
  */
 export function parseFeetInput(input: string, fallback: number): number {
   const trimmed = input.trim();
   if (!trimmed) return fallback;
-  const ftInMatch = trimmed.match(/^(-?\d+)\s*'\s*-?\s*(\d+(?:\.\d+)?)\s*"?$/);
+
+  // Pure inches check, e.g. '36"' or '36 in'
+  const inchOnlyMatch = trimmed.match(/^(-?\d+(?:\.\d+)?)\s*(?:"|in|inches)$/i);
+  if (inchOnlyMatch) {
+    const inches = parseFloat(inchOnlyMatch[1]);
+    return Number.isFinite(inches) ? Number((inches / 12).toFixed(2)) : fallback;
+  }
+
+  // Feet and inches with optional fractional inch, e.g. 22'-8", 22' 8 1/2", 22'-8.5"
+  const ftInMatch = trimmed.match(
+    /^(-?\d+)\s*'\s*-?\s*(\d+)?(?:\s+(\d+)\/(\d+))?(?:\.(\d+))?\s*"?$/
+  );
   if (ftInMatch) {
     const ft = parseFloat(ftInMatch[1]);
-    const inches = parseFloat(ftInMatch[2]);
-    return Number((ft + (ft < 0 ? -inches : inches) / 12).toFixed(2));
+    const wholeInches = ftInMatch[2] ? parseFloat(ftInMatch[2]) : 0;
+    const fracInches =
+      ftInMatch[3] && ftInMatch[4]
+        ? parseFloat(ftInMatch[3]) / parseFloat(ftInMatch[4])
+        : ftInMatch[5]
+        ? parseFloat(`0.${ftInMatch[5]}`)
+        : 0;
+    const totalInches = wholeInches + fracInches;
+    return Number((ft + (ft < 0 ? -totalInches : totalInches) / 12).toFixed(2));
   }
+
   const num = parseFloat(trimmed.replace(/[^0-9.-]/g, ''));
   return Number.isFinite(num) ? Number(num.toFixed(2)) : fallback;
 }

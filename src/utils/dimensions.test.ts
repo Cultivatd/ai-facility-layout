@@ -42,6 +42,12 @@ describe('parseFeetInput', () => {
     expect(parseFeetInput('18', 0)).toBe(18);
   });
 
+  it('parses pure inch inputs and fractional inches', () => {
+    expect(parseFeetInput('36"', 0)).toBe(3.0);
+    expect(parseFeetInput('48 in', 0)).toBe(4.0);
+    expect(parseFeetInput(`22'-8 1/2"`, 0)).toBe(22.71);
+  });
+
   it('falls back to provided fallback for empty or invalid input', () => {
     expect(parseFeetInput('', 15)).toBe(15);
     expect(parseFeetInput('invalid', 20)).toBe(20);

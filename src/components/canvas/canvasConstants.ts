@@ -33,7 +33,11 @@ export interface SheetBoundsSvg {
  * Computes the bounding box in architectural feet for any polygon shellPerimeter.
  */
 export function computeShellBounds(shellPerimeter: Point2D[]): ShellBoundsFt {
-  if (!shellPerimeter || shellPerimeter.length === 0) {
+  const validPts = (shellPerimeter || []).filter(
+    (pt) => pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)
+  );
+
+  if (validPts.length === 0) {
     return {
       minXFt: 0,
       maxXFt: 60,
@@ -51,7 +55,7 @@ export function computeShellBounds(shellPerimeter: Point2D[]): ShellBoundsFt {
   let minYFt = Infinity;
   let maxYFt = -Infinity;
 
-  for (const pt of shellPerimeter) {
+  for (const pt of validPts) {
     if (pt.x < minXFt) minXFt = pt.x;
     if (pt.x > maxXFt) maxXFt = pt.x;
     if (pt.y < minYFt) minYFt = pt.y;

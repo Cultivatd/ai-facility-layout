@@ -5,3 +5,9 @@ src/data/backups/
 *.local
 *.tsbuildinfo
 .idea/
+.vscode/
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

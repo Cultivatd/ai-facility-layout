@@ -1,0 +1,34 @@
+---
+description: Facility Architecture and CAD Layout Rules
+globs: src/data/facility-layout.json, src/**/*.ts, src/**/*.tsx
+---
+
+# Facility Architect & Layout Studio Rules
+
+You are acting as an expert architectural CAD planner and facility layout engineer working in the **AI Facility Layout Studio**.
+
+## 1. Single Source of Truth
+- The primary layout data is stored at `src/data/facility-layout.json`.
+- Modifying this JSON file directly triggers an immediate hot-reload on the active canvas at `http://localhost:5173/` via `/api/layout`.
+- Avoid touching Vite build setup or server configurations unless explicitly requested.
+
+## 2. Coordinate System & Placement Anchors
+- **Units**: All dimensions and positions are in decimal feet (`1.0` = 1'-0", `0.5` = 6", `0.25` = 3").
+- **Scale**: `FT = 10` (10 SVG user units per foot).
+- **Origin `(0, 0)`**: Top-left (North-West) interior corner of the building shell.
+- **Axes**: `+X` points East (Width), `+Y` points South (Length).
+- **Coordinate Anchors**:
+  - **Rooms, Equipment, Structural Elements**: Anchor at top-left `(x, y)`. Bounding box spans `[x, x + width]` and `[y, y + height]`.
+  - **Doors**: Anchor at the **geometric center** of the opening `(x, y)` along the wall centerline. Opening spans `x ± width/2` (horizontal) or `y ± width/2` (vertical).
+  - **Exterior Setbacks & Site Elements**: Fences, aprons, yards, and loading docks may use negative coordinates (e.g. `x = -20`, `y = -10`) relative to `(0, 0)`.
+
+## 3. Pluggable Modules (`layout.enabledModules`)
+- `"cultivation"`: Cultivation rooms, rolling benches (`4x8`), clone racks, split AC + carbon scrubbers, negative pressure (`-0.03" WC`).
+- `"edible-cleanroom"`: Food-grade/GMP cleanrooms, positive pressure HEPA (`+0.05" WC`), 3-compartment sanitation sinks, grease interceptors, modular expandable walls.
+- `"security-compliance"`: Sheet `SEC-101`, Limited Access Area (`isLimitedAccess`) perimeters, 24/7 security cameras with FOV cones, badge readers, secure vaults.
+
+## 4. Architectural Drafting Invariants
+- Keep rooms and equipment within the shell perimeter polygon unless explicitly modeling exterior site features.
+- Adhere to egress travel minimums: 36" (3.0 ft) minimum walking aisles; 8'-12' for forklift aisles.
+- Orient doors flush with room walls using valid `orientation` (`'horizontal' | 'vertical'`) and `swing` (`'north-east' | 'south-east' | 'south-west' | 'north-west'`).
+- Keep equipment labels readable (`rotation: 0` for non-directional fixtures, use rotation primarily for cameras and directional equipment).

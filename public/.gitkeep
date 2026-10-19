@@ -1,0 +1,5 @@
+# Public assets directory
+# Place calibrated PDF underlays and linework PNGs here:
+#   - public/facility-underlay.png
+#   - public/facility-linework-dark.png
+#   - public/facility-linework-light.png

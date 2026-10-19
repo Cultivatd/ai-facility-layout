@@ -140,7 +140,7 @@ export const DoorNode: React.FC<DoorNodeProps> = ({ doorId }) => {
           />
           <path
             d={`M ${dirX * -halfW} ${dirY * w} A ${w} ${w} 0 0 ${
-              dirX * dirY > 0 ? 1 : 0
+              dirX * dirY > 0 ? 0 : 1
             } ${dirX * halfW} 0`}
             fill="none"
             stroke={arcColor}
@@ -162,7 +162,7 @@ export const DoorNode: React.FC<DoorNodeProps> = ({ doorId }) => {
           />
           <path
             d={`M ${dirX * w} ${dirY * -halfW} A ${w} ${w} 0 0 ${
-              dirX * dirY > 0 ? 0 : 1
+              dirX * dirY > 0 ? 1 : 0
             } 0 ${dirY * halfW}`}
             fill="none"
             stroke={arcColor}

@@ -7,15 +7,38 @@ import { computeShellBounds } from '../canvas/canvasConstants';
 
 type CameraPreset = 'iso-se' | 'iso-sw' | 'top-perspective' | 'dock-view';
 
+function disposeHierarchy(obj: THREE.Object3D) {
+  obj.traverse((child) => {
+    if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) {
+      if (child.geometry) {
+        child.geometry.dispose();
+      }
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach((m) => m.dispose());
+        } else {
+          child.material.dispose();
+        }
+      }
+    }
+  });
+}
+
 export const IsometricPreview3D: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const modelGroupRef = useRef<THREE.Group | null>(null);
+  const renderSceneRef = useRef<(() => void) | null>(null);
   const cameraUpdateRef = useRef<((preset: CameraPreset) => void) | null>(null);
+  const resetCameraRef = useRef<(() => void) | null>(null);
 
   const layout = useLayoutStore((s) => s.layout);
   const [cutawayShellWalls, setCutawayShellWalls] = useState(true);
   const [activePreset, setActivePreset] = useState<CameraPreset>('iso-se');
 
+  // 1. Initialize static Three.js engine & interaction listeners ONCE on mount
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -25,8 +48,10 @@ export const IsometricPreview3D: React.FC = () => {
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#090d16');
+    sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(40, width / height, 1, 1500);
+    cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -39,6 +64,11 @@ export const IsometricPreview3D: React.FC = () => {
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
+
+    const renderScene = () => {
+      renderer.render(scene, camera);
+    };
+    renderSceneRef.current = renderScene;
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.72);
@@ -55,46 +85,195 @@ export const IsometricPreview3D: React.FC = () => {
     fillLight.position.set(-70, 60, -50);
     scene.add(fillLight);
 
-    // Dynamically center on the building shell bounding box
-    const shellBounds = computeShellBounds(layout.shellPerimeter);
-    const centerX = shellBounds.centerXFt;
-    const centerZ = shellBounds.centerYFt;
-    const maxSpan = Math.max(shellBounds.widthFt, shellBounds.heightFt, 60);
-
-    // Ground Reference Grid
-    const gridSize = Math.ceil((maxSpan * 1.8) / 10) * 10;
-    const gridHelper = new THREE.GridHelper(gridSize, Math.round(gridSize / 5), 0x1e293b, 0x111827);
+    // Ground Reference Grid (size 300 covers typical industrial bay)
+    const gridHelper = new THREE.GridHelper(300, 30, 0x1e293b, 0x111827);
     gridHelper.position.set(0, -0.2, 0);
     scene.add(gridHelper);
 
+    // Persistent Model Group
     const modelGroup = new THREE.Group();
+    scene.add(modelGroup);
+    modelGroupRef.current = modelGroup;
+
+    // Interactive Orbit Camera State
+    let spherical = {
+      radius: 120,
+      phi: Math.PI / 3.1, // polar angle from Y axis
+      theta: Math.PI / 4.2, // azimuth angle
+    };
+    let target = new THREE.Vector3(0, 4, 0);
+
+    const updateCameraFromSpherical = () => {
+      const sinPhi = Math.sin(spherical.phi);
+      camera.position.x = target.x + spherical.radius * sinPhi * Math.sin(spherical.theta);
+      camera.position.y = target.y + spherical.radius * Math.cos(spherical.phi);
+      camera.position.z = target.z + spherical.radius * sinPhi * Math.cos(spherical.theta);
+      camera.lookAt(target);
+      renderScene();
+    };
+
+    const applyPreset = (preset: CameraPreset) => {
+      switch (preset) {
+        case 'iso-se':
+          spherical.phi = Math.PI / 3.2;
+          spherical.theta = Math.PI / 4.2;
+          break;
+        case 'iso-sw':
+          spherical.phi = Math.PI / 3.2;
+          spherical.theta = -Math.PI / 4.2;
+          break;
+        case 'dock-view':
+          spherical.phi = Math.PI / 2.3;
+          spherical.theta = 0.05;
+          break;
+        case 'top-perspective':
+          spherical.phi = 0.12;
+          spherical.theta = 0;
+          break;
+      }
+      updateCameraFromSpherical();
+    };
+    cameraUpdateRef.current = applyPreset;
+    resetCameraRef.current = () => applyPreset('iso-se');
+
+    updateCameraFromSpherical();
+
+    // Mouse Drag Orbit Controls
+    let isPointerDown = false;
+    let lastX = 0;
+    let lastY = 0;
+    const domElem = renderer.domElement;
+
+    const onPointerDown = (e: PointerEvent) => {
+      isPointerDown = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isPointerDown) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+
+      if (e.buttons === 2 || e.shiftKey) {
+        // Pan Target
+        const panSpeed = 0.08 * (spherical.radius / 100);
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        const right = new THREE.Vector3().crossVectors(forward, camera.up).normalize();
+        target.addScaledVector(right, -dx * panSpeed);
+        target.y += dy * panSpeed;
+      } else {
+        // Orbit
+        const rotSpeed = 0.006;
+        spherical.theta -= dx * rotSpeed;
+        spherical.phi = Math.max(0.05, Math.min(Math.PI / 2.05, spherical.phi - dy * rotSpeed));
+      }
+      updateCameraFromSpherical();
+    };
+
+    const onPointerUp = () => {
+      isPointerDown = false;
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      spherical.radius = Math.max(35, Math.min(450, spherical.radius + e.deltaY * 0.08));
+      updateCameraFromSpherical();
+    };
+
+    const onContextMenu = (e: MouseEvent) => e.preventDefault();
+
+    domElem.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    domElem.addEventListener('wheel', onWheel, { passive: false });
+    domElem.addEventListener('contextmenu', onContextMenu);
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (!container) return;
+      const nw = container.clientWidth;
+      const nh = container.clientHeight;
+      if (nw > 0 && nh > 0) {
+        camera.aspect = nw / nh;
+        camera.updateProjectionMatrix();
+        renderer.setSize(nw, nh);
+        renderScene();
+      }
+    });
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+      domElem.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      domElem.removeEventListener('wheel', onWheel);
+      domElem.removeEventListener('contextmenu', onContextMenu);
+
+      if (modelGroupRef.current) {
+        disposeHierarchy(modelGroupRef.current);
+        modelGroupRef.current.clear();
+      }
+      gridHelper.geometry.dispose();
+      (gridHelper.material as THREE.Material).dispose();
+      renderer.dispose();
+      if (domElem.parentElement) {
+        domElem.parentElement.removeChild(domElem);
+      }
+      rendererRef.current = null;
+      sceneRef.current = null;
+      cameraRef.current = null;
+      modelGroupRef.current = null;
+    };
+  }, []);
+
+  // 2. Rebuild dynamic facility geometry on layout/settings changes without re-creating WebGLRenderer
+  useEffect(() => {
+    const modelGroup = modelGroupRef.current;
+    const renderScene = renderSceneRef.current;
+    if (!modelGroup || !renderScene) return;
+
+    // Safely dispose all existing meshes in modelGroup
+    disposeHierarchy(modelGroup);
+    modelGroup.clear();
+
+    const shellBounds = computeShellBounds(layout.shellPerimeter);
+    const centerX = shellBounds.centerXFt;
+    const centerZ = shellBounds.centerYFt;
+
     // Shift so center of facility is at world (0, 0, 0)
     modelGroup.position.set(-centerX, 0, -centerZ);
-    scene.add(modelGroup);
 
     // 1. Concrete Slab Polygon from shellPerimeter
     if (layout.shellPerimeter.length >= 3) {
-      const shape = new THREE.Shape();
-      layout.shellPerimeter.forEach((pt, idx) => {
-        if (idx === 0) shape.moveTo(pt.x, pt.y);
-        else shape.lineTo(pt.x, pt.y);
-      });
-      shape.closePath();
+      try {
+        const shape = new THREE.Shape();
+        layout.shellPerimeter.forEach((pt, idx) => {
+          if (idx === 0) shape.moveTo(pt.x, pt.y);
+          else shape.lineTo(pt.x, pt.y);
+        });
+        shape.closePath();
 
-      const slabGeom = new THREE.ExtrudeGeometry(shape, {
-        depth: 0.6,
-        bevelEnabled: false,
-      });
-      slabGeom.rotateX(Math.PI / 2);
-      const slabMat = new THREE.MeshStandardMaterial({
-        color: 0x1e293b,
-        roughness: 0.85,
-        metalness: 0.1,
-      });
-      const slabMesh = new THREE.Mesh(slabGeom, slabMat);
-      slabMesh.position.y = 0;
-      slabMesh.receiveShadow = true;
-      modelGroup.add(slabMesh);
+        const slabGeom = new THREE.ExtrudeGeometry(shape, {
+          depth: 0.6,
+          bevelEnabled: false,
+        });
+        slabGeom.rotateX(Math.PI / 2);
+        const slabMat = new THREE.MeshStandardMaterial({
+          color: 0x1e293b,
+          roughness: 0.85,
+          metalness: 0.1,
+        });
+        const slabMesh = new THREE.Mesh(slabGeom, slabMat);
+        slabMesh.position.y = 0;
+        slabMesh.receiveShadow = true;
+        modelGroup.add(slabMesh);
+      } catch (err) {
+        console.warn('Could not extrude shell slab in 3D preview:', err);
+      }
     }
 
     // 2. Shell Perimeter Walls
@@ -109,7 +288,6 @@ export const IsometricPreview3D: React.FC = () => {
       const segLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
       if (segLen < 0.1) continue;
 
-      // Determine if East or South wall for cutaway view
       const isEastOrSouth =
         (p1.x >= eastThreshold && p2.x >= eastThreshold) ||
         (p1.y >= southThreshold && p2.y >= southThreshold);
@@ -141,8 +319,8 @@ export const IsometricPreview3D: React.FC = () => {
       const colorHex = room.color || catStyle.fill3D;
       const threeColor = new THREE.Color(colorHex);
 
-      // Colored Floor Zone Pad
-      const padGeom = new THREE.BoxGeometry(room.width - 0.15, 0.18, room.height - 0.15);
+      // Floor Zone Pad
+      const padGeom = new THREE.BoxGeometry(Math.max(0.5, room.width - 0.15), 0.18, Math.max(0.5, room.height - 0.15));
       const padMat = new THREE.MeshStandardMaterial({
         color: threeColor,
         roughness: 0.5,
@@ -157,9 +335,9 @@ export const IsometricPreview3D: React.FC = () => {
       padMesh.receiveShadow = true;
       modelGroup.add(padMesh);
 
-      // Translucent Partition Volume + Crisp Wireframe Top Rim
+      // Translucent Partition Volume + Wireframe Top Rim
       const wallH = room.wallHeight || 10;
-      const boxGeom = new THREE.BoxGeometry(room.width, wallH, room.height);
+      const boxGeom = new THREE.BoxGeometry(Math.max(0.5, room.width), wallH, Math.max(0.5, room.height));
       const boxMat = new THREE.MeshStandardMaterial({
         color: threeColor,
         transparent: true,
@@ -285,112 +463,7 @@ export const IsometricPreview3D: React.FC = () => {
       modelGroup.add(line);
     });
 
-    // Interactive Orbit Camera State
-    const baseRadius = Math.max(95, maxSpan * 1.25);
-    let spherical = {
-      radius: baseRadius,
-      phi: Math.PI / 3.1, // polar angle from Y axis
-      theta: Math.PI / 4.2, // azimuth angle
-    };
-    let target = new THREE.Vector3(0, 4, 0);
-
-    const updateCameraFromSpherical = () => {
-      const sinPhi = Math.sin(spherical.phi);
-      camera.position.x = target.x + spherical.radius * sinPhi * Math.sin(spherical.theta);
-      camera.position.y = target.y + spherical.radius * Math.cos(spherical.phi);
-      camera.position.z = target.z + spherical.radius * sinPhi * Math.cos(spherical.theta);
-      camera.lookAt(target);
-      renderer.render(scene, camera);
-    };
-
-    const applyPreset = (preset: CameraPreset) => {
-      target.set(0, 4, 0);
-      if (preset === 'iso-se') {
-        spherical = { radius: baseRadius, phi: Math.PI / 3.1, theta: Math.PI / 4.2 };
-      } else if (preset === 'iso-sw') {
-        spherical = { radius: baseRadius, phi: Math.PI / 3.1, theta: -Math.PI / 4.2 };
-      } else if (preset === 'top-perspective') {
-        spherical = { radius: baseRadius * 1.1, phi: 0.22, theta: 0 };
-      } else if (preset === 'dock-view') {
-        spherical = { radius: baseRadius * 0.85, phi: Math.PI / 2.7, theta: 0.15 };
-      }
-      updateCameraFromSpherical();
-    };
-
-    cameraUpdateRef.current = applyPreset;
-    applyPreset(activePreset);
-
-    // Pointer Orbit / Pan / Wheel Zoom
-    let isPointerDown = false;
-    let isRightDrag = false;
-    let prevX = 0;
-    let prevY = 0;
-
-    const domElem = renderer.domElement;
-    const onPointerDown = (e: PointerEvent) => {
-      isPointerDown = true;
-      isRightDrag = e.button === 2 || e.shiftKey;
-      prevX = e.clientX;
-      prevY = e.clientY;
-    };
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (!isPointerDown) return;
-      const dx = e.clientX - prevX;
-      const dy = e.clientY - prevY;
-      prevX = e.clientX;
-      prevY = e.clientY;
-
-      if (isRightDrag) {
-        target.x -= dx * 0.12;
-        target.z -= dy * 0.12;
-      } else {
-        spherical.theta -= dx * 0.007;
-        spherical.phi = Math.max(0.15, Math.min(Math.PI / 2.1, spherical.phi - dy * 0.007));
-      }
-      updateCameraFromSpherical();
-    };
-
-    const onPointerUp = () => {
-      isPointerDown = false;
-    };
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      spherical.radius = Math.max(35, Math.min(450, spherical.radius + e.deltaY * 0.08));
-      updateCameraFromSpherical();
-    };
-
-    const onContextMenu = (e: MouseEvent) => e.preventDefault();
-
-    domElem.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    domElem.addEventListener('wheel', onWheel, { passive: false });
-    domElem.addEventListener('contextmenu', onContextMenu);
-
-    const resizeObserver = new ResizeObserver(() => {
-      if (!container) return;
-      const nw = container.clientWidth;
-      const nh = container.clientHeight;
-      if (nw > 0 && nh > 0) {
-        camera.aspect = nw / nh;
-        camera.updateProjectionMatrix();
-        renderer.setSize(nw, nh);
-        renderer.render(scene, camera);
-      }
-    });
-    resizeObserver.observe(container);
-
-    return () => {
-      resizeObserver.disconnect();
-      domElem.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      domElem.removeEventListener('wheel', onWheel);
-      domElem.removeEventListener('contextmenu', onContextMenu);
-      renderer.dispose();
-    };
+    renderScene();
   }, [layout, cutawayShellWalls]);
 
   const handleSelectPreset = (preset: CameraPreset) => {
@@ -448,41 +521,40 @@ export const IsometricPreview3D: React.FC = () => {
           className={`px-2.5 py-1 rounded font-medium transition ${
             cutawayShellWalls
               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'text-slate-300 hover:bg-slate-800'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
+          title="Cutaway perimeter walls on East and South sides for unobstructed interior view"
         >
-          {cutawayShellWalls ? 'Cutaway Shell: ON' : 'Full 18\' Shell'}
+          {cutawayShellWalls ? 'Cutaway Walls: ON' : 'Cutaway Walls: OFF'}
         </button>
 
         <button
-          onClick={handleExport3DPng}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-600/90 hover:bg-emerald-500 text-white font-medium transition ml-1"
-          title="Save 3D Render PNG"
+          onClick={() => resetCameraRef.current?.()}
+          className="p-1 rounded text-slate-400 hover:text-white transition"
+          title="Reset Camera View to Default"
         >
-          <Camera className="w-3.5 h-3.5" />
-          <span>Save 3D PNG</span>
+          <RotateCcw className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Bottom 3D Legend & Instructions */}
-      <div className="absolute bottom-3 left-3 flex items-center gap-3 bg-slate-900/90 backdrop-blur border border-slate-700/80 px-3 py-1.5 rounded-lg text-xs text-slate-300 shadow-lg">
-        <span>
-          <strong>Left-Drag:</strong> Orbit 3D
-        </span>
-        <span className="text-slate-600">&bull;</span>
-        <span>
-          <strong>Shift+Drag:</strong> Pan
-        </span>
-        <span className="text-slate-600">&bull;</span>
-        <span>
-          <strong>Scroll:</strong> Zoom
-        </span>
+      {/* Bottom Floating Info & High-Res Snapshot Export */}
+      <div className="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur border border-slate-700/80 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-400 shadow-xl flex items-center gap-2">
+        <span>3D Perspective</span>
+        <span>&bull;</span>
+        <span>Drag Left-Click: Orbit</span>
+        <span>&bull;</span>
+        <span>Right-Click / Shift+Drag: Pan</span>
+        <span>&bull;</span>
+        <span>Scroll: Zoom</span>
+      </div>
+
+      <div className="absolute bottom-3 right-3">
         <button
-          onClick={() => handleSelectPreset('iso-se')}
-          className="ml-2 flex items-center gap-1 text-blue-400 hover:text-blue-300"
+          onClick={handleExport3DPng}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-700/80 text-xs font-medium transition shadow-xl"
         >
-          <RotateCcw className="w-3 h-3" />
-          Reset
+          <Camera className="w-3.5 h-3.5 text-blue-400" />
+          <span>Export 3D Render</span>
         </button>
       </div>
     </div>

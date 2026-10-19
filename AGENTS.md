@@ -30,6 +30,11 @@ This repository powers an open-source **2D Architectural CAD + 3D Isometric Faci
   - `+X` points **East** (Width).
   - `+Y` points **South** (Length).
 
+### Coordinate Anchors
+- **Rooms, Equipment & Structural Elements**: Anchor at top-left `(x, y)` (`x = minX`, `y = minY`). Their bounding box extends from `(x, y)` to `(x + width, y + height)`.
+- **Doors**: Anchor at the **geometric center** of the door opening along the wall centerline `(x, y)`. The door leaf opening spans `x ± width/2` (horizontal) or `y ± width/2` (vertical).
+- **Exterior Setbacks & Site Features**: Exterior setback fences, utility yards, or dock aprons can use negative coordinates (e.g. `x = -15`, `y = -10`) relative to the building shell's North-West `(0, 0)` origin.
+
 ### Optional Raster Floorplan Underlay (`pdfCalibration`)
 - If a layout includes `pdfCalibration` in `src/data/facility-layout.json`, `src/components/canvas/PdfUnderlayLayer.tsx` renders the calibrated floorplan image beneath the vector CAD layers:
   ```json

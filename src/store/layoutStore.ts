@@ -46,10 +46,16 @@ interface LayoutStoreState {
 }
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+let saveRevision = 0;
 let lastDiscreteSnapshotTimeMs = 0;
+
+export function hasPendingDiskWrite(): boolean {
+  return saveTimeout !== null;
+}
 
 async function writeLayoutToDisk(
   layout: FacilityLayoutData,
+  revision: number,
   onDone: (mtimeMs: number, status: LayoutStoreState['syncStatus']) => void
 ) {
   try {
@@ -60,12 +66,19 @@ async function writeLayoutToDisk(
     });
     if (res.ok) {
       const data = await res.json();
-      onDone(data.mtimeMs ?? Date.now(), 'synced');
+      // Only transition to synced if no newer revision was queued in-flight
+      if (revision === saveRevision) {
+        onDone(data.mtimeMs ?? Date.now(), 'synced');
+      }
     } else {
-      onDone(Date.now(), 'offline');
+      if (revision === saveRevision) {
+        onDone(Date.now(), 'offline');
+      }
     }
   } catch {
-    onDone(Date.now(), 'offline');
+    if (revision === saveRevision) {
+      onDone(Date.now(), 'offline');
+    }
   }
 }
 
@@ -73,10 +86,13 @@ function scheduleDiskWrite(
   layout: FacilityLayoutData,
   setSyncInfo: (mtimeMs: number, status: LayoutStoreState['syncStatus']) => void
 ) {
+  saveRevision++;
+  const thisRevision = saveRevision;
   setSyncInfo(Date.now(), 'saving');
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
-    void writeLayoutToDisk(layout, setSyncInfo);
+    saveTimeout = null;
+    void writeLayoutToDisk(layout, thisRevision, setSyncInfo);
   }, 200);
 }
 
@@ -161,7 +177,7 @@ export const useLayoutStore = create<LayoutStoreState>((set, get) => ({
     };
     set((state) => ({
       past: shouldPush ? pushSnapshot(state.past, current) : state.past,
-      future: shouldPush ? [] : state.future,
+      future: [],
       layout: nextLayout,
     }));
     scheduleDiskWrite(nextLayout, get().setSyncInfo);
@@ -250,7 +266,7 @@ export const useLayoutStore = create<LayoutStoreState>((set, get) => ({
       lastDiscreteSnapshotTimeMs = now;
       set((state) => ({
         past: shouldPush ? pushSnapshot(state.past, current) : state.past,
-        future: shouldPush ? [] : state.future,
+        future: [],
         layout: nextLayout,
       }));
       scheduleDiskWrite(nextLayout, get().setSyncInfo);
@@ -299,7 +315,7 @@ export const useLayoutStore = create<LayoutStoreState>((set, get) => ({
       lastDiscreteSnapshotTimeMs = now;
       set((state) => ({
         past: shouldPush ? pushSnapshot(state.past, current) : state.past,
-        future: shouldPush ? [] : state.future,
+        future: [],
         layout: nextLayout,
       }));
       scheduleDiskWrite(nextLayout, get().setSyncInfo);
@@ -348,7 +364,7 @@ export const useLayoutStore = create<LayoutStoreState>((set, get) => ({
       lastDiscreteSnapshotTimeMs = now;
       set((state) => ({
         past: shouldPush ? pushSnapshot(state.past, current) : state.past,
-        future: shouldPush ? [] : state.future,
+        future: [],
         layout: nextLayout,
       }));
       scheduleDiskWrite(nextLayout, get().setSyncInfo);
@@ -399,7 +415,7 @@ export const useLayoutStore = create<LayoutStoreState>((set, get) => ({
       lastDiscreteSnapshotTimeMs = now;
       set((state) => ({
         past: shouldPush ? pushSnapshot(state.past, current) : state.past,
-        future: shouldPush ? [] : state.future,
+        future: [],
         layout: nextLayout,
       }));
       scheduleDiskWrite(nextLayout, get().setSyncInfo);
@@ -437,6 +453,12 @@ export const useLayoutStore = create<LayoutStoreState>((set, get) => ({
   },
 
   persistCurrentLayout: async () => {
-    await writeLayoutToDisk(get().layout, get().setSyncInfo);
+    if (saveTimeout !== null) {
+      window.clearTimeout(saveTimeout);
+      saveTimeout = null;
+    }
+    saveRevision++;
+    const thisRevision = saveRevision;
+    await writeLayoutToDisk(get().layout, thisRevision, get().setSyncInfo);
   },
 }));

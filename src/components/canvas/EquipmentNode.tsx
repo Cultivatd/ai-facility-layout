@@ -236,13 +236,21 @@ export const EquipmentNode: React.FC<EquipmentNodeProps> = ({ equipmentId }) => 
         recordHistorySnapshot();
       }
       const curPt = clientToFeetCoords(svg, moveEvt.clientX, moveEvt.clientY);
+      const worldDx = curPt.xFt - startPt.xFt;
+      const worldDy = curPt.yFt - startPt.yFt;
+
+      // Project world mouse delta into local coordinate space based on equipment rotation
+      const rad = -((item.rotation || 0) * Math.PI) / 180;
+      const localDx = worldDx * Math.cos(rad) - worldDy * Math.sin(rad);
+      const localDy = worldDx * Math.sin(rad) + worldDy * Math.cos(rad);
+
       const nextW = Math.max(
         1.2,
-        snapToGrid(origW + (curPt.xFt - startPt.xFt), snapStepFt)
+        snapToGrid(origW + localDx, snapStepFt)
       );
       const nextH = Math.max(
         1.2,
-        snapToGrid(origH + (curPt.yFt - startPt.yFt), snapStepFt)
+        snapToGrid(origH + localDy, snapStepFt)
       );
       updateEquipment(item.id, { width: nextW, height: nextH }, false);
     };

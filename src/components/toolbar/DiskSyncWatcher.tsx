@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { CheckCircle2, RefreshCw, Sparkles } from 'lucide-react';
-import { useLayoutStore } from '../../store/layoutStore';
+import { useLayoutStore, hasPendingDiskWrite } from '../../store/layoutStore';
 
 export const DiskSyncWatcher: React.FC = () => {
   const syncStatus = useLayoutStore((s) => s.syncStatus);
@@ -9,7 +9,7 @@ export const DiskSyncWatcher: React.FC = () => {
     let active = true;
 
     const pollDiskFile = async () => {
-      if (useLayoutStore.getState().syncStatus === 'saving') return;
+      if (useLayoutStore.getState().syncStatus === 'saving' || hasPendingDiskWrite()) return;
       try {
         const res = await fetch('/api/layout');
         if (!res.ok || !active) return;

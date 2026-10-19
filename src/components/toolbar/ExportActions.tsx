@@ -194,6 +194,7 @@ export const ExportActions: React.FC = () => {
         return;
       }
 
+      const isLandscape = sheetBounds.width >= sheetBounds.height;
       doc.open();
       doc.write(`<!DOCTYPE html>
 <html>
@@ -202,8 +203,8 @@ export const ExportActions: React.FC = () => {
     <title>${layout.metadata.projectName} — ${layout.metadata.suiteName}</title>
     <style>
       @page {
-        size: portrait;
-        margin: 0.2in;
+        size: ${isLandscape ? 'landscape' : 'portrait'};
+        margin: 0.25in;
       }
       html, body {
         width: 100%;

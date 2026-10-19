@@ -5,6 +5,8 @@ import { SpaceProgramSidebar } from './components/sidebar/SpaceProgramSidebar';
 import { StudioHeader } from './components/toolbar/StudioHeader';
 import { useViewStore } from './store/viewStore';
 
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+
 export const App: React.FC = () => {
   const viewMode = useViewStore((s) => s.viewMode);
 
@@ -14,9 +16,17 @@ export const App: React.FC = () => {
 
       <div className="flex-1 flex overflow-hidden">
         <main className="flex-1 flex overflow-hidden relative">
-          {(viewMode === '2d' || viewMode === 'split') && <FacilityCanvas2D />}
+          {(viewMode === '2d' || viewMode === 'split') && (
+            <ErrorBoundary fallbackTitle="2D CAD Canvas Encountered an Error">
+              <FacilityCanvas2D />
+            </ErrorBoundary>
+          )}
           {viewMode === 'split' && <div className="w-px h-full bg-slate-800 shrink-0" />}
-          {(viewMode === '3d' || viewMode === 'split') && <IsometricPreview3D />}
+          {(viewMode === '3d' || viewMode === 'split') && (
+            <ErrorBoundary fallbackTitle="3D Isometric Viewport Encountered an Error">
+              <IsometricPreview3D />
+            </ErrorBoundary>
+          )}
         </main>
 
         <SpaceProgramSidebar />
