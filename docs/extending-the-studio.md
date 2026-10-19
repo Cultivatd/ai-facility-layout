@@ -1,76 +1,116 @@
 # Extending AI Facility Layout Studio
 
-This guide explains how to extend **AI Facility Layout Studio** by adding new pluggable industry domain modules, layout presets, and discipline sheet views.
+This guide explains how to extend **AI Facility Layout Studio** by creating self-contained pluggable industry modules, layout presets, and discipline sheet views.
 
 ---
 
-## 1. Adding a Pluggable Domain Module
+## 1. Creating a Self-Contained Domain Module
 
-Domain modules (`DomainModuleId` in `src/types/facility.ts`) allow customizing the studio for specific industries (e.g. cold storage, semiconductor fabrication, commercial kitchens, pharmaceutical compounding).
+Pluggable domain modules package industry-specific templates, category metadata, and visual styling into **a single, self-contained file**. Modules can be shared as standalone files, GitHub gists, or npm packages.
 
-### Step 1: Update TypeScript Definitions
-In `src/types/facility.ts`, add your module ID to `DomainModuleId`:
+### Automatic Type Safety
+All module identifiers (`DomainModuleId`), room categories (`RoomCategory`), and equipment categories (`EquipmentCategory`) use open TypeScript string unions (`Builtin | (string & {})`). This means:
+- You get **full IDE autocompletion** for all built-in options.
+- Any custom module ID or custom category is **automatically valid TypeScript** without modifying core type definitions in `src/types/facility.ts`.
 
-```typescript
-export type DomainModuleId =
-  | 'cultivation'
-  | 'edible-cleanroom'
-  | 'security-compliance'
-  | 'cold-storage'; // New module
-```
+---
 
-If your module introduces new room types, equipment types, or structural elements, extend the corresponding union types:
-```typescript
-export type RoomType =
-  | 'office'
-  | 'restroom'
-  // ...
-  | 'blast-freezer'; // New room type
+### Step 1: Define Your Module in a Single File
 
-export type EquipmentCategory =
-  | 'process'
-  | 'storage'
-  // ...
-  | 'refrigeration-rack'; // New category
-```
-
-### Step 2: Register Module in `src/data/domain-modules.ts`
-Define your module metadata, quick-add templates, and color palettes:
+Create a file for your module (e.g. `src/modules/custom/cold-storage.ts`):
 
 ```typescript
-export const DOMAIN_MODULES: Record<DomainModuleId, DomainModuleDefinition> = {
-  // ... existing modules
-  'cold-storage': {
-    id: 'cold-storage',
-    name: 'Industrial Cold Storage & Blast Freezing',
-    description: 'Walk-in freezers, insulated metal panels (IMP), defrost condensate lines, and dock thermal seals.',
-    badge: 'COLD',
-    roomTemplates: [
-      {
+import { defineDomainModule } from '../types';
+
+export const coldStorageModule = defineDomainModule({
+  id: 'cold-storage',
+  name: 'Industrial Cold Storage & Blast Freezing',
+  shortLabel: 'Cold Storage',
+  badgeColor: '#0284c7',
+  description:
+    'Walk-in blast freezers, insulated metal panels (IMP), defrost condensate lines, and dock thermal seals.',
+  features: [
+    'Blast Freezer (-20°F) insulated room category',
+    'Ceiling-Hung Evaporator Coil and Compressor Rack symbols',
+    'Refrigerant piping line callouts and thermal break thresholds',
+  ],
+  roomCategories: ['cold-storage'],
+  equipmentCategories: ['machinery', 'plumbing'],
+
+  // Quick-Add Room Templates
+  roomTemplates: [
+    {
+      id: 'tpl-room-blast-freezer',
+      label: 'Blast Freezer -20°F (30×20)',
+      room: {
         name: 'Blast Freezer -20°F',
-        type: 'storage',
+        code: 'FRZ-1',
+        category: 'cold-storage',
+        subtitle: 'Insulated Metal Panel (-20°F)',
         width: 30,
         height: 20,
-        color: '#0284c7',
-        clearanceRequirements: '48" perimeter airflow',
+        wallHeight: 16,
+        isExisting: false,
+        materialCallout: 'Walls: 5" IMP R-40 • Floor: Heated Sub-Slab + Insulated Epoxy',
+        pressureDifferential: '-0.02" WC THERMAL SEAL',
+        ceilingType: 'imp-insulated',
+        floorFinish: 'sealed-concrete',
+        showDimensions: true,
       },
-    ],
-    equipmentTemplates: [
-      {
-        name: 'Evaporator Fan Unit',
-        category: 'hvac',
+    },
+  ],
+
+  // Quick-Add Equipment Templates
+  equipmentTemplates: [
+    {
+      id: 'tpl-eq-evap-fan',
+      label: 'Ceiling Evaporator Unit (8×4)',
+      equipment: {
+        name: 'Ceiling Evaporator Coil',
+        code: 'EVAP-1',
+        category: 'machinery',
         width: 8,
         height: 4,
-        clearanceZone: { front: 4, back: 2, sides: 1 },
+        elevationHeight: 4,
+        rotation: 0,
+        clearanceFt: 3,
+        specs: '460V 3Ph • DX Ammonia/Freon • Hot Gas Defrost',
+        isExisting: false,
       },
-    ],
+    },
+  ],
+
+  // Self-Contained Visual Styling (2D Canvas & 3D Isometric)
+  roomCategoryStyles: {
+    'cold-storage': {
+      label: 'Cold Storage / Freezer',
+      fillInvestor: 'rgba(2, 132, 199, 0.20)',
+      strokeInvestor: '#0284c7',
+      badgeColor: '#0284c7',
+      fill3D: '#0284c7',
+      hatchPattern: 'grid',
+    },
   },
-};
+});
 ```
 
-### Step 3: Add Styling and 3D Material Mappings
-- **2D Color & Rendering**: Add corresponding room/equipment color themes in `src/utils/dimensions.ts` (`ROOM_TYPE_COLORS`, `EQUIPMENT_COLORS`).
-- **3D Isometric**: Add specialized Three.js material representations in `src/components/preview3d/IsometricPreview3D.tsx` (e.g. insulated wall panel textures or metallic refrigeration components).
+---
+
+### Step 2: Register Your Module
+
+Register the module with a single line:
+
+```typescript
+import { registerDomainModule } from './modules';
+import { coldStorageModule } from './modules/custom/cold-storage';
+
+registerDomainModule(coldStorageModule);
+```
+
+That's it!
+- The module immediately appears in the **Modules** menu in the top bar and sidebar.
+- Enabling the module unlocks its room and equipment templates in the **Space Program** catalog.
+- The 2D SVG canvas and 3D isometric viewport automatically use your custom category colors and hatching styles.
 
 ---
 

@@ -1,4 +1,4 @@
-export type RoomCategory =
+export type BuiltinRoomCategory =
   | 'production'
   | 'office'
   | 'warehouse'
@@ -10,6 +10,12 @@ export type RoomCategory =
   | 'breakroom'
   | 'corridor'
   | 'cultivation';
+
+/**
+ * Extensible room category: supports all built-in types with IDE autocompletion,
+ * while allowing custom pluggable modules to introduce new categories without type errors.
+ */
+export type RoomCategory = BuiltinRoomCategory | (string & {});
 
 export type CeilingType =
   | 'open-deck'
@@ -28,10 +34,16 @@ export type FloorFinish =
 
 export type CardinalSide = 'north' | 'south' | 'east' | 'west';
 
-export type DomainModuleId =
+export type BuiltinDomainModuleId =
   | 'cultivation'
   | 'edible-cleanroom'
   | 'security-compliance';
+
+/**
+ * Extensible domain module ID: provides autocompletion for built-ins,
+ * while accepting any custom community or enterprise pluggable module ID.
+ */
+export type DomainModuleId = BuiltinDomainModuleId | (string & {});
 
 export interface FacilityRoom {
   id: string;
@@ -101,7 +113,7 @@ export interface FacilityDoor {
   notes?: string;
 }
 
-export type EquipmentCategory =
+export type BuiltinEquipmentCategory =
   | 'rolling-bench'
   | 'machinery'
   | 'racking'
@@ -115,6 +127,12 @@ export type EquipmentCategory =
   | 'hvac-scrubber'
   | 'safety-equipment'
   | 'custom';
+
+/**
+ * Extensible equipment category: supports all built-in types with IDE autocompletion,
+ * while allowing custom pluggable modules to introduce new categories without type errors.
+ */
+export type EquipmentCategory = BuiltinEquipmentCategory | (string & {});
 
 export interface FacilityEquipment {
   id: string;

@@ -3,6 +3,7 @@ import {
   PresentationTheme,
   RoomCategory,
 } from '../types/facility';
+import { getModuleRoomCategoryStyle } from '../modules/registry';
 
 /**
  * Formats decimal feet into architectural feet and inches, e.g., 44.25 -> 44'-3"
@@ -82,7 +83,7 @@ export interface CategoryStyle {
   hatchPattern?: 'diagonal' | 'grid' | 'dots' | 'cross' | 'none';
 }
 
-export const ROOM_CATEGORY_STYLES: Record<RoomCategory, CategoryStyle> = {
+const BUILTIN_ROOM_CATEGORY_STYLES: Record<string, CategoryStyle> = {
   production: {
     label: 'Production / Assembly',
     fillInvestor: 'rgba(59, 130, 246, 0.20)',
@@ -172,6 +173,43 @@ export const ROOM_CATEGORY_STYLES: Record<RoomCategory, CategoryStyle> = {
     hatchPattern: 'grid',
   },
 };
+
+/**
+ * Returns visual style for a room category, resolving registered module styles first,
+ * then built-in category styles, and finally a clean fallback for custom categories.
+ */
+export function getRoomCategoryStyle(category: string): CategoryStyle {
+  const modStyle = getModuleRoomCategoryStyle(category);
+  if (modStyle) return modStyle;
+  if (category in BUILTIN_ROOM_CATEGORY_STYLES) {
+    return BUILTIN_ROOM_CATEGORY_STYLES[category];
+  }
+  return {
+    label: category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' '),
+    fillInvestor: 'rgba(100, 116, 139, 0.20)',
+    strokeInvestor: '#64748b',
+    badgeColor: '#64748b',
+    fill3D: '#64748b',
+    hatchPattern: 'none',
+  };
+}
+
+/**
+ * Dynamic map of room category styles supporting both built-in categories and
+ * custom categories introduced by pluggable domain modules.
+ */
+export const ROOM_CATEGORY_STYLES: Record<string, CategoryStyle> = new Proxy(
+  BUILTIN_ROOM_CATEGORY_STYLES,
+  {
+    get(target, prop: string) {
+      if (typeof prop !== 'string') return undefined;
+      return getRoomCategoryStyle(prop);
+    },
+    has(target, prop: string) {
+      return Boolean(getModuleRoomCategoryStyle(prop) || prop in target);
+    },
+  }
+);
 
 export interface ThemePalette {
   canvasBg: string;
