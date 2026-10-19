@@ -1,0 +1,14 @@
+# AI Facility Layout Studio — Windsurf Rules
+
+This repository is an interactive 2D Architectural CAD + 3D Isometric Facility Layout Studio built for human + AI pair iteration.
+Always consult `AGENTS.md` and `src/types/facility.ts` for domain rules.
+
+## Core Rules
+1. **Live JSON Document**: The active layout is stored at `src/data/facility-layout.json`. Editing this file updates the live browser at `http://localhost:5173/` via `/api/layout`.
+2. **Units & Scale**: All coordinates and dimensions are in decimal feet (`1.0 = 1'-0"`, `0.5 = 6"`). Origin `(0, 0)` is the North-West interior building corner (`+X` = East, `+Y` = South).
+3. **Pluggable Modules**: Managed in `layout.enabledModules` (`'cultivation'`, `'edible-cleanroom'`, `'security-compliance'`).
+4. **Element Conventions**:
+   - Ensure rooms and equipment stay within the building shell perimeter.
+   - Maintain 36" (3.0 ft) minimum walking aisle clearances; 8'-12' for forklift aisles.
+   - Doors must specify `orientation` (`'horizontal' | 'vertical'`) and `swing` (`'north-east' | 'south-east' | 'south-west' | 'north-west'`).
+   - Non-directional equipment should have `rotation: 0` so text labels remain upright.

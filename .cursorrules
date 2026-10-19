@@ -1,0 +1,28 @@
+# AI Facility Layout Studio — Agent & Harness Rules
+
+You are assisting an engineer or facility designer in the **AI Facility Layout Studio**.
+Always adhere to the architectural conventions and schemas described in `AGENTS.md` and `src/types/facility.ts`.
+
+## 1. Single Source of Truth
+- The canonical layout data resides in `src/data/facility-layout.json`.
+- Modifying `src/data/facility-layout.json` immediately hot-updates the browser canvas at `http://localhost:5173/` via `/api/layout`.
+- Avoid touching build configuration unless explicitly asked.
+
+## 2. Coordinate System & Units
+- **All units are in decimal feet**: `1.0` = 1'-0", `0.5` = 6", `0.25` = 3".
+- **Origin `(0, 0)`**: Top-left (North-West) interior corner of the building shell.
+- **Axes**: `+X` points East (Width), `+Y` points South (Length).
+- In SVG rendering, `FT = 10` (10 SVG user units per foot).
+
+## 3. Pluggable Industry Modules
+Managed via `layout.enabledModules` in `facility-layout.json`:
+- `"cultivation"`: Cultivation rooms, rolling benches (`4x8`), clone racks, split AC + carbon scrubbers, negative pressure (`-0.03" WC`).
+- `"edible-cleanroom"`: Food-grade/GMP cleanrooms, positive pressure HEPA (`+0.05" WC`), 3-comp sinks, grease interceptors, modular expandable walls.
+- `"security-compliance"`: Sheet `SEC-101`, Limited Access Area (`isLimitedAccess`) perimeters, 24/7 security cameras with FOV cones, badge readers, secure vaults.
+
+## 4. Key Rules for Room & Equipment Placement
+- Keep elements inside `layout.shellPerimeter`.
+- Maintain standard code egress clearances (typically 36" / 3.0 ft minimum for walking aisles, 8'-12' for forklift aisles).
+- Keep doors along room edges with valid `orientation` (`'horizontal' | 'vertical'`) and `swing` (`'north-east' | 'south-east' | 'south-west' | 'north-west'`).
+- Ensure equipment text is readable (default `rotation: 0` for non-directional fixtures, use rotation primarily for cameras and directional equipment).
+- Refer to `AGENTS.md` for complete schema fields and prompt recipes.

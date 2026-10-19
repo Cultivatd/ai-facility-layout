@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+}
+
+@media print {
+  @page {
+    size: portrait;
+    margin: 0.2in;
+  }
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: hidden !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+  #canvas-pan-zoom-stage {
+    transform: none !important;
+    transition: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  #facility-layout-svg {
+    width: 100% !important;
+    height: 98vh !important;
+    max-width: 100% !important;
+    max-height: 98vh !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+}

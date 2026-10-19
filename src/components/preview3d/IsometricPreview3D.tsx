@@ -1,0 +1,490 @@
+import React, { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { Camera, RotateCcw } from 'lucide-react';
+import { useLayoutStore } from '../../store/layoutStore';
+import { ROOM_CATEGORY_STYLES } from '../../utils/dimensions';
+import { computeShellBounds } from '../canvas/canvasConstants';
+
+type CameraPreset = 'iso-se' | 'iso-sw' | 'top-perspective' | 'dock-view';
+
+export const IsometricPreview3D: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const cameraUpdateRef = useRef<((preset: CameraPreset) => void) | null>(null);
+
+  const layout = useLayoutStore((s) => s.layout);
+  const [cutawayShellWalls, setCutawayShellWalls] = useState(true);
+  const [activePreset, setActivePreset] = useState<CameraPreset>('iso-se');
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 600;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#090d16');
+
+    const camera = new THREE.PerspectiveCamera(40, width / height, 1, 1500);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      preserveDrawingBuffer: true,
+    });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.innerHTML = '';
+    container.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.72);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.15);
+    dirLight.position.set(85, 130, 95);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    scene.add(dirLight);
+
+    const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.35);
+    fillLight.position.set(-70, 60, -50);
+    scene.add(fillLight);
+
+    // Dynamically center on the building shell bounding box
+    const shellBounds = computeShellBounds(layout.shellPerimeter);
+    const centerX = shellBounds.centerXFt;
+    const centerZ = shellBounds.centerYFt;
+    const maxSpan = Math.max(shellBounds.widthFt, shellBounds.heightFt, 60);
+
+    // Ground Reference Grid
+    const gridSize = Math.ceil((maxSpan * 1.8) / 10) * 10;
+    const gridHelper = new THREE.GridHelper(gridSize, Math.round(gridSize / 5), 0x1e293b, 0x111827);
+    gridHelper.position.set(0, -0.2, 0);
+    scene.add(gridHelper);
+
+    const modelGroup = new THREE.Group();
+    // Shift so center of facility is at world (0, 0, 0)
+    modelGroup.position.set(-centerX, 0, -centerZ);
+    scene.add(modelGroup);
+
+    // 1. Concrete Slab Polygon from shellPerimeter
+    if (layout.shellPerimeter.length >= 3) {
+      const shape = new THREE.Shape();
+      layout.shellPerimeter.forEach((pt, idx) => {
+        if (idx === 0) shape.moveTo(pt.x, pt.y);
+        else shape.lineTo(pt.x, pt.y);
+      });
+      shape.closePath();
+
+      const slabGeom = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.6,
+        bevelEnabled: false,
+      });
+      slabGeom.rotateX(Math.PI / 2);
+      const slabMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        roughness: 0.85,
+        metalness: 0.1,
+      });
+      const slabMesh = new THREE.Mesh(slabGeom, slabMat);
+      slabMesh.position.y = 0;
+      slabMesh.receiveShadow = true;
+      modelGroup.add(slabMesh);
+    }
+
+    // 2. Shell Perimeter Walls
+    const shellHeight = layout.metadata.clearHeightFt || 18;
+    const pts = layout.shellPerimeter;
+    const eastThreshold = shellBounds.maxXFt - 3.5;
+    const southThreshold = shellBounds.maxYFt - 2.0;
+
+    for (let i = 0; i < pts.length; i++) {
+      const p1 = pts[i];
+      const p2 = pts[(i + 1) % pts.length];
+      const segLen = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      if (segLen < 0.1) continue;
+
+      // Determine if East or South wall for cutaway view
+      const isEastOrSouth =
+        (p1.x >= eastThreshold && p2.x >= eastThreshold) ||
+        (p1.y >= southThreshold && p2.y >= southThreshold);
+      const wallH = cutawayShellWalls && isEastOrSouth ? 3.5 : shellHeight;
+
+      const geom = new THREE.BoxGeometry(segLen, wallH, 0.75);
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x475569,
+        roughness: 0.65,
+        transparent: cutawayShellWalls && isEastOrSouth,
+        opacity: cutawayShellWalls && isEastOrSouth ? 0.45 : 0.92,
+      });
+      const wall = new THREE.Mesh(geom, mat);
+      const midX = (p1.x + p2.x) / 2;
+      const midZ = (p1.y + p2.y) / 2;
+      const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+
+      wall.position.set(midX, wallH / 2, midZ);
+      wall.rotation.y = -angle;
+      wall.castShadow = true;
+      wall.receiveShadow = true;
+      modelGroup.add(wall);
+    }
+
+    // 3. Rooms (Floor Zone Pad + Partition Walls)
+    layout.rooms.forEach((room) => {
+      const catStyle =
+        ROOM_CATEGORY_STYLES[room.category] ?? ROOM_CATEGORY_STYLES.production;
+      const colorHex = room.color || catStyle.fill3D;
+      const threeColor = new THREE.Color(colorHex);
+
+      // Colored Floor Zone Pad
+      const padGeom = new THREE.BoxGeometry(room.width - 0.15, 0.18, room.height - 0.15);
+      const padMat = new THREE.MeshStandardMaterial({
+        color: threeColor,
+        roughness: 0.5,
+        metalness: 0.08,
+      });
+      const padMesh = new THREE.Mesh(padGeom, padMat);
+      padMesh.position.set(
+        room.x + room.width / 2,
+        0.09,
+        room.y + room.height / 2
+      );
+      padMesh.receiveShadow = true;
+      modelGroup.add(padMesh);
+
+      // Translucent Partition Volume + Crisp Wireframe Top Rim
+      const wallH = room.wallHeight || 10;
+      const boxGeom = new THREE.BoxGeometry(room.width, wallH, room.height);
+      const boxMat = new THREE.MeshStandardMaterial({
+        color: threeColor,
+        transparent: true,
+        opacity: room.category === 'production' || room.category === 'shipping' ? 0.12 : 0.28,
+        roughness: 0.3,
+      });
+      const boxMesh = new THREE.Mesh(boxGeom, boxMat);
+      boxMesh.position.set(
+        room.x + room.width / 2,
+        wallH / 2,
+        room.y + room.height / 2
+      );
+      modelGroup.add(boxMesh);
+
+      const edges = new THREE.EdgesGeometry(boxGeom);
+      const lineMat = new THREE.LineBasicMaterial({ color: threeColor });
+      const wireframe = new THREE.LineSegments(edges, lineMat);
+      wireframe.position.copy(boxMesh.position);
+      modelGroup.add(wireframe);
+    });
+
+    // 4. Structural Steel Column & Dock Pits
+    layout.structuralElements.forEach((st) => {
+      if (st.type === 'steel-column') {
+        const colGeom = new THREE.CylinderGeometry(0.6, 0.6, shellHeight, 20);
+        const colMat = new THREE.MeshStandardMaterial({
+          color: 0xef4444,
+          metalness: 0.5,
+          roughness: 0.4,
+        });
+        const colMesh = new THREE.Mesh(colGeom, colMat);
+        colMesh.position.set(
+          st.x + st.width / 2,
+          shellHeight / 2,
+          st.y + st.height / 2
+        );
+        colMesh.castShadow = true;
+        modelGroup.add(colMesh);
+      } else if (st.type === 'dock-leveler-pit') {
+        const pitGeom = new THREE.BoxGeometry(st.width, 0.16, st.height);
+        const pitMat = new THREE.MeshStandardMaterial({
+          color: 0xf97316,
+          roughness: 0.7,
+        });
+        const pitMesh = new THREE.Mesh(pitGeom, pitMat);
+        pitMesh.position.set(
+          st.x + st.width / 2,
+          0.1,
+          st.y + st.height / 2
+        );
+        modelGroup.add(pitMesh);
+      } else if (st.type === 'partition-wall') {
+        const pWallH = st.isExisting ? shellHeight : 12;
+        const pGeom = new THREE.BoxGeometry(st.width, pWallH, st.height);
+        const pMat = new THREE.MeshStandardMaterial({
+          color: st.isExisting ? 0x64748b : 0xd97706,
+          transparent: true,
+          opacity: st.isExisting ? 0.85 : 0.65,
+          roughness: 0.4,
+        });
+        const pMesh = new THREE.Mesh(pGeom, pMat);
+        pMesh.position.set(
+          st.x + st.width / 2,
+          pWallH / 2,
+          st.y + st.height / 2
+        );
+        modelGroup.add(pMesh);
+      }
+    });
+
+    // 5. Doors (3D Frames)
+    layout.doors.forEach((d) => {
+      const doorH = d.type === 'overhead-dock' ? 9.5 : 7.0;
+      const isHoriz = d.orientation === 'horizontal';
+      const geom = new THREE.BoxGeometry(
+        isHoriz ? d.width : 0.45,
+        doorH,
+        isHoriz ? 0.45 : d.width
+      );
+      const mat = new THREE.MeshStandardMaterial({
+        color: d.type === 'overhead-dock' ? 0xf97316 : 0xfacc15,
+        transparent: true,
+        opacity: 0.78,
+      });
+      const doorMesh = new THREE.Mesh(geom, mat);
+      doorMesh.position.set(d.x, doorH / 2, d.y);
+      modelGroup.add(doorMesh);
+    });
+
+    // 6. 3D Industrial Equipment & Racking
+    layout.equipment.forEach((eq) => {
+      const eqH = eq.elevationHeight || 4;
+      const eqColor =
+        eq.category === 'machinery'
+          ? 0x3b82f6
+          : eq.category === 'racking'
+          ? 0xf59e0b
+          : eq.category === 'electrical-mep'
+          ? 0xef4444
+          : 0x94a3b8;
+
+      const geom = new THREE.BoxGeometry(eq.width, eqH, eq.height);
+      const mat = new THREE.MeshStandardMaterial({
+        color: eqColor,
+        roughness: 0.4,
+        metalness: 0.35,
+      });
+      const mesh = new THREE.Mesh(geom, mat);
+      const rotRad = -((eq.rotation || 0) * Math.PI) / 180;
+      mesh.position.set(eq.x + eq.width / 2, eqH / 2, eq.y + eq.height / 2);
+      mesh.rotation.y = rotRad;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      modelGroup.add(mesh);
+
+      const edges = new THREE.EdgesGeometry(geom);
+      const line = new THREE.LineSegments(
+        edges,
+        new THREE.LineBasicMaterial({ color: 0xe2e8f0 })
+      );
+      line.position.copy(mesh.position);
+      line.rotation.y = rotRad;
+      modelGroup.add(line);
+    });
+
+    // Interactive Orbit Camera State
+    const baseRadius = Math.max(95, maxSpan * 1.25);
+    let spherical = {
+      radius: baseRadius,
+      phi: Math.PI / 3.1, // polar angle from Y axis
+      theta: Math.PI / 4.2, // azimuth angle
+    };
+    let target = new THREE.Vector3(0, 4, 0);
+
+    const updateCameraFromSpherical = () => {
+      const sinPhi = Math.sin(spherical.phi);
+      camera.position.x = target.x + spherical.radius * sinPhi * Math.sin(spherical.theta);
+      camera.position.y = target.y + spherical.radius * Math.cos(spherical.phi);
+      camera.position.z = target.z + spherical.radius * sinPhi * Math.cos(spherical.theta);
+      camera.lookAt(target);
+      renderer.render(scene, camera);
+    };
+
+    const applyPreset = (preset: CameraPreset) => {
+      target.set(0, 4, 0);
+      if (preset === 'iso-se') {
+        spherical = { radius: baseRadius, phi: Math.PI / 3.1, theta: Math.PI / 4.2 };
+      } else if (preset === 'iso-sw') {
+        spherical = { radius: baseRadius, phi: Math.PI / 3.1, theta: -Math.PI / 4.2 };
+      } else if (preset === 'top-perspective') {
+        spherical = { radius: baseRadius * 1.1, phi: 0.22, theta: 0 };
+      } else if (preset === 'dock-view') {
+        spherical = { radius: baseRadius * 0.85, phi: Math.PI / 2.7, theta: 0.15 };
+      }
+      updateCameraFromSpherical();
+    };
+
+    cameraUpdateRef.current = applyPreset;
+    applyPreset(activePreset);
+
+    // Pointer Orbit / Pan / Wheel Zoom
+    let isPointerDown = false;
+    let isRightDrag = false;
+    let prevX = 0;
+    let prevY = 0;
+
+    const domElem = renderer.domElement;
+    const onPointerDown = (e: PointerEvent) => {
+      isPointerDown = true;
+      isRightDrag = e.button === 2 || e.shiftKey;
+      prevX = e.clientX;
+      prevY = e.clientY;
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isPointerDown) return;
+      const dx = e.clientX - prevX;
+      const dy = e.clientY - prevY;
+      prevX = e.clientX;
+      prevY = e.clientY;
+
+      if (isRightDrag) {
+        target.x -= dx * 0.12;
+        target.z -= dy * 0.12;
+      } else {
+        spherical.theta -= dx * 0.007;
+        spherical.phi = Math.max(0.15, Math.min(Math.PI / 2.1, spherical.phi - dy * 0.007));
+      }
+      updateCameraFromSpherical();
+    };
+
+    const onPointerUp = () => {
+      isPointerDown = false;
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      spherical.radius = Math.max(35, Math.min(450, spherical.radius + e.deltaY * 0.08));
+      updateCameraFromSpherical();
+    };
+
+    const onContextMenu = (e: MouseEvent) => e.preventDefault();
+
+    domElem.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    domElem.addEventListener('wheel', onWheel, { passive: false });
+    domElem.addEventListener('contextmenu', onContextMenu);
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (!container) return;
+      const nw = container.clientWidth;
+      const nh = container.clientHeight;
+      if (nw > 0 && nh > 0) {
+        camera.aspect = nw / nh;
+        camera.updateProjectionMatrix();
+        renderer.setSize(nw, nh);
+        renderer.render(scene, camera);
+      }
+    });
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+      domElem.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      domElem.removeEventListener('wheel', onWheel);
+      domElem.removeEventListener('contextmenu', onContextMenu);
+      renderer.dispose();
+    };
+  }, [layout, cutawayShellWalls]);
+
+  const handleSelectPreset = (preset: CameraPreset) => {
+    setActivePreset(preset);
+    cameraUpdateRef.current?.(preset);
+  };
+
+  const handleExport3DPng = () => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    const dataUrl = renderer.domElement.toDataURL('image/png');
+    const slug =
+      (layout.metadata.suiteName || layout.metadata.projectName || 'facility')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'facility';
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `${slug}-3d-isometric-render.png`;
+    a.click();
+  };
+
+  return (
+    <div className="relative flex-1 h-full bg-slate-950 overflow-hidden flex flex-col">
+      {/* 3D Viewport Canvas */}
+      <div ref={containerRef} className="flex-1 w-full h-full cursor-grab active:cursor-grabbing" />
+
+      {/* Top-Left 3D Camera & Cutaway Controls */}
+      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 bg-slate-900/90 backdrop-blur border border-slate-700/80 p-1.5 rounded-lg text-xs shadow-xl">
+        {(
+          [
+            ['iso-se', 'Isometric SE'],
+            ['iso-sw', 'Isometric SW'],
+            ['dock-view', 'South Docks'],
+            ['top-perspective', 'Top 3D'],
+          ] as [CameraPreset, string][]
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => handleSelectPreset(id)}
+            className={`px-2.5 py-1 rounded font-medium transition ${
+              activePreset === id
+                ? 'bg-blue-600 text-white'
+                : 'text-slate-300 hover:bg-slate-800'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+
+        <div className="h-4 w-px bg-slate-700 mx-1" />
+
+        <button
+          onClick={() => setCutawayShellWalls((v) => !v)}
+          className={`px-2.5 py-1 rounded font-medium transition ${
+            cutawayShellWalls
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+              : 'text-slate-300 hover:bg-slate-800'
+          }`}
+        >
+          {cutawayShellWalls ? 'Cutaway Shell: ON' : 'Full 18\' Shell'}
+        </button>
+
+        <button
+          onClick={handleExport3DPng}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-600/90 hover:bg-emerald-500 text-white font-medium transition ml-1"
+          title="Save 3D Render PNG"
+        >
+          <Camera className="w-3.5 h-3.5" />
+          <span>Save 3D PNG</span>
+        </button>
+      </div>
+
+      {/* Bottom 3D Legend & Instructions */}
+      <div className="absolute bottom-3 left-3 flex items-center gap-3 bg-slate-900/90 backdrop-blur border border-slate-700/80 px-3 py-1.5 rounded-lg text-xs text-slate-300 shadow-lg">
+        <span>
+          <strong>Left-Drag:</strong> Orbit 3D
+        </span>
+        <span className="text-slate-600">&bull;</span>
+        <span>
+          <strong>Shift+Drag:</strong> Pan
+        </span>
+        <span className="text-slate-600">&bull;</span>
+        <span>
+          <strong>Scroll:</strong> Zoom
+        </span>
+        <button
+          onClick={() => handleSelectPreset('iso-se')}
+          className="ml-2 flex items-center gap-1 text-blue-400 hover:text-blue-300"
+        >
+          <RotateCcw className="w-3 h-3" />
+          Reset
+        </button>
+      </div>
+    </div>
+  );
+};
