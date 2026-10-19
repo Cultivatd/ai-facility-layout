@@ -20,9 +20,12 @@ Always adhere to the architectural conventions and schemas described in `AGENTS.
 
 ## 3. Pluggable Industry Modules
 Managed via `layout.enabledModules` in `facility-layout.json`:
-- `"cultivation"`: Cultivation rooms, rolling benches (`4x8`), clone racks, split AC + carbon scrubbers, negative pressure (`-0.03" WC`).
-- `"edible-cleanroom"`: Food-grade/GMP cleanrooms, positive pressure HEPA (`+0.05" WC`), 3-comp sinks, grease interceptors, modular expandable walls.
-- `"security-compliance"`: Sheet `SEC-101`, Limited Access Area (`isLimitedAccess`) perimeters, 24/7 security cameras with FOV cones, badge readers, secure vaults.
+- `"cultivation"`: Flower/veg canopy rooms, drying/curing suites, fertigation dosing skids, rolling benches (`4x8`), LED clone racks, split AC + scrubbers.
+- `"edible-cleanroom"`: Food-grade/GMP cleanrooms, gowning airlocks (PAL), kitchen hoods, positive pressure HEPA (`+0.05" WC`), 3-comp sinks, inline packaging.
+- `"security-compliance"`: Sheet `SEC-101`, Limited Access Area (`isLimitedAccess`) perimeters, SOC command rooms, mantraps, 24/7 security cameras with FOV cones, badge readers, secure vaults.
+- `"cold-storage"`: Sub-zero blast freezers (`-20°F`), perishable coolers (`36°F`), refrigerated cross-docks (`45°F`), compressor engine rooms, evaporators, thermal doors.
+- `"logistics-warehouse"`: Cross-dock shipping/receiving, hydraulic pit levelers, high-bay pallet racking, pick/pack fulfillment benches, forklift battery chargers.
+- `"biotech-lab"`: BSL-2 molecular biology wet labs, cell culture cleanrooms, chemical fume hoods, pass-through autoclaves, -80°C cryo biorepositories, island benches.
 
 ## 4. Key Rules for Room & Equipment Placement
 - Keep interior elements inside `layout.shellPerimeter`.

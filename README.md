@@ -78,25 +78,53 @@ The studio includes a core general-purpose industrial engine and **pluggable dom
    - Automated NFPA/IBC life-safety egress travel paths, illuminated `EXIT` signs, and fire extinguisher placements.
    - Contractor MEP schedules: wet-wall plumbing tie-ins, electrical main panels, and wall finish schedules.
 
-2. **Controlled-Environment Cultivation & Nursery (`cultivation`)**:
-   - Closed-loop flower and veg cultivation rooms with temperature/humidity zoning.
-   - `4×8` rolling ebb-and-flow benches with rolling aisle clearance visualization.
-   - Multi-tier vertical LED propagation and mother plant racks.
-   - High-tonnage split-system AC units with integrated carbon scrubbers.
-   - Negative air pressure differentials (`-0.03" WC`) for odor mitigation.
+2. **Controlled-Environment Cultivation & CEA (`cultivation`)**:
+   - Closed-loop flower and vegetative canopy rooms with environmental zoning and CO2 enrichment.
+   - Precision drying and curing climate suites (60°F / 60% RH).
+   - Automated fertigation dosing skids, multi-part injection manifolds, and commercial reverse osmosis (RO) loops.
+   - `4×8` rolling ebb-and-flow benches and multi-tier LED propagation racks.
+   - Split-system AC units with activated carbon scrubbers and industrial 500-pint dehumidifiers.
+   - Negative air pressure differentials (`-0.03" WC`) for complete odor containment.
 
 3. **Edible / Food-Grade & GMP Cleanroom (`edible-cleanroom`)**:
-   - Washable FRP / IMP wall assemblies and coved epoxy sanitary baseboards.
+   - Washable FRP / IMP wall assemblies and coved antimicrobial epoxy floors.
+   - Personnel Gowning Airlocks (PAL) with differential pressure buffers.
    - Positive air pressure differentials (`+0.05" WC`) with HEPA supply callouts.
-   - Commercial 3-compartment wash/rinse/sanitize sinks and floor grease interceptors.
-   - Modular, non-load-bearing expandable wall callouts and phased expansion arrows.
+   - Commercial kitchen cooking suites with Type-1 grease hoods and make-up air.
+   - NSF 3-compartment pot sinks, touchless handwash stations, and grease interceptors.
+   - Inline packaging, bottle filling, and induction sealing conveyor stations.
 
 4. **Regulated Security, L.A.A. & Vault Compliance (`security-compliance`)**:
    - Dedicated engineering sheet `SEC-101`.
    - Regulated Limited Access Area (`L.A.A.`) perimeter boundary styling.
+   - Security Operations Center (SOC) video command suites and server equipment racks.
+   - Anti-tailgating interlocked mantrap sally ports and optical speed turnstiles.
    - 24/7 security cameras with interactive 0°–360° Field of View (FOV) coverage cones.
-   - Electronic strike locks and biometric/RFID badge readers.
-   - Reinforced double-wall secure vaults, narcotics safes, and quarantine cages.
+   - Electronic strike locks, biometric readers, and high-security modular vaults.
+
+5. **Industrial Cold Storage & Refrigerated Logistics (`cold-storage`)**:
+   - Sub-zero industrial blast freezers (-20°F) with heated sub-slab glycol warming loops and R-40 IMP panels.
+   - Medium-temp perishable and produce walk-in coolers (34°F–38°F).
+   - Refrigerated cross-dock staging aprons (45°F) maintaining unbroken cold chains.
+   - Refrigeration compressor and condenser machine engine rooms.
+   - Ceiling-hung blast evaporator fan coils and central semi-hermetic compressor skids.
+   - High-speed insulated roll-up thermal doors and overhead air curtains.
+
+6. **Logistics, Warehousing & Fulfillment (`logistics-warehouse`)**:
+   - Cross-docking shipping/receiving bays with pit levelers and trailer restraints.
+   - E-commerce pick, pack, and ship fulfillment suites with scale-integrated packing benches.
+   - High-bay bulk pallet storage aisles designed for wide and narrow-aisle reach trucks.
+   - Forklift battery charging, watering, and hoist stations with safety eyewash systems.
+   - Inbound inspection, quarantine (RMA), and returns processing zones.
+   - Motorized roller conveyors, pallet stretch wrappers, and heavy cantilever racks.
+
+7. **Biotechnology, Life Sciences & R&D Lab (`biotech-lab`)**:
+   - BSL-2 molecular biology, genomics, and tissue processing suites.
+   - Cell culture and tissue incubation cleanrooms (+0.04" WC HEPA).
+   - Analytical chemistry and chromatography labs with ducted chemical fume hoods and cup sinks.
+   - Autoclave, glassware prep, and deionized (DI) water loops.
+   - Cryogenic biorepositories and -80°C ultra-low temperature upright freezer farms.
+   - Class II Type A2 biosafety cabinets and epoxy-resin island benches with overhead utility spines.
 
 ---
 
@@ -129,8 +157,10 @@ Open your browser to `http://localhost:5173/`. The studio starts with the active
 
 In the top toolbar, click **Presets** to load any of the included baseline templates:
 - **General Industrial & Lab (`60' × 100'`)**: 6,000 SF light manufacturing, assembly workcells, QC metrology lab, engineering office, and pallet warehouse.
+- **Cold Storage & Distribution Center (`60' × 100'`)**: 6,000 SF refrigerated logistics warehouse with -20°F blast freezer, 36°F cooler, compressor engine room, and cross-dock apron.
+- **Biotechnology & Life Sciences Suite (`50' × 80'`)**: 4,000 SF lab with BSL-2 molecular suite, cell culture, analytical chemistry, autoclave prep, and -80°C cryo biorepository farm.
 - **Blank Rectangular Shell (`50' × 80'`)**: Clean, empty 4,000 SF building shell ready to resize and build from scratch.
-- **Showcase: Cultivation & Edible Cleanroom (`43.4' × 96.0'`)**: Comprehensive multi-zone facility showcasing all three pluggable domain modules.
+- **Showcase: Cultivation & Edible Cleanroom (`43.4' × 96.0'`)**: Comprehensive multi-zone facility showcasing CEA, GMP Cleanroom, and Regulated Vault modules.
 
 > [!WARNING]
 > Selecting a preset in the UI immediately syncs to and updates `src/data/facility-layout.json`. Use the **Backups** menu in the top toolbar to create manual checkpoints before switching templates.

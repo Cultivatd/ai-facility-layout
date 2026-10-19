@@ -2,6 +2,9 @@ import { CORE_EQUIPMENT_TEMPLATES, CORE_ROOM_TEMPLATES } from './builtin/core-te
 import { cultivationModule } from './builtin/cultivation';
 import { edibleCleanroomModule } from './builtin/edible-cleanroom';
 import { securityComplianceModule } from './builtin/security-compliance';
+import { coldStorageModule } from './builtin/cold-storage';
+import { logisticsWarehouseModule } from './builtin/logistics-warehouse';
+import { biotechLabModule } from './builtin/biotech-lab';
 import {
   DomainModuleDescriptor,
   EquipmentQuickTemplate,
@@ -17,6 +20,9 @@ function initBuiltins() {
   registerDomainModule(cultivationModule);
   registerDomainModule(edibleCleanroomModule);
   registerDomainModule(securityComplianceModule);
+  registerDomainModule(coldStorageModule);
+  registerDomainModule(logisticsWarehouseModule);
+  registerDomainModule(biotechLabModule);
 }
 
 /**

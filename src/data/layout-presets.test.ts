@@ -3,6 +3,8 @@ import {
   GENERAL_INDUSTRIAL_PRESET,
   BLANK_SHELL_PRESET,
   SHOWCASE_CULTIVATION_FACILITY,
+  COLD_STORAGE_LOGISTICS_PRESET,
+  BIOTECH_LAB_PRESET,
 } from './layout-presets';
 import activeLayoutJson from './facility-layout.json';
 import { calculatePolygonAreaSqFt } from '../utils/dimensions';
@@ -10,6 +12,8 @@ import { calculatePolygonAreaSqFt } from '../utils/dimensions';
 describe('layout-presets and data integrity', () => {
   const allPresets = [
     { name: 'GENERAL_INDUSTRIAL_PRESET', data: GENERAL_INDUSTRIAL_PRESET },
+    { name: 'COLD_STORAGE_LOGISTICS_PRESET', data: COLD_STORAGE_LOGISTICS_PRESET },
+    { name: 'BIOTECH_LAB_PRESET', data: BIOTECH_LAB_PRESET },
     { name: 'BLANK_SHELL_PRESET', data: BLANK_SHELL_PRESET },
     { name: 'SHOWCASE_CULTIVATION_FACILITY', data: SHOWCASE_CULTIVATION_FACILITY },
     { name: 'Active facility-layout.json', data: activeLayoutJson },

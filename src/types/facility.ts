@@ -9,7 +9,9 @@ export type BuiltinRoomCategory =
   | 'utility'
   | 'breakroom'
   | 'corridor'
-  | 'cultivation';
+  | 'cultivation'
+  | 'cold-storage'
+  | 'biotech';
 
 /**
  * Extensible room category: supports all built-in types with IDE autocompletion,
@@ -37,7 +39,10 @@ export type CardinalSide = 'north' | 'south' | 'east' | 'west';
 export type BuiltinDomainModuleId =
   | 'cultivation'
   | 'edible-cleanroom'
-  | 'security-compliance';
+  | 'security-compliance'
+  | 'cold-storage'
+  | 'logistics-warehouse'
+  | 'biotech-lab';
 
 /**
  * Extensible domain module ID: provides autocompletion for built-ins,
@@ -126,6 +131,9 @@ export type BuiltinEquipmentCategory =
   | 'security-camera'
   | 'hvac-scrubber'
   | 'safety-equipment'
+  | 'refrigeration'
+  | 'lab-equipment'
+  | 'dock-equipment'
   | 'custom';
 
 /**
@@ -159,7 +167,7 @@ export interface FacilityEquipment {
   color?: string;
 }
 
-export type StructuralElementType =
+export type BuiltinStructuralElementType =
   | 'steel-column'
   | 'wall-pilaster'
   | 'dock-leveler-pit'
@@ -168,6 +176,8 @@ export type StructuralElementType =
   | 'unit-heater'
   | 'window-glazing'
   | 'partition-wall';
+
+export type StructuralElementType = BuiltinStructuralElementType | (string & {});
 
 export interface FacilityStructuralElement {
   id: string;

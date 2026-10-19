@@ -4,3 +4,6 @@ export * from './builtin/core-templates';
 export * from './builtin/cultivation';
 export * from './builtin/edible-cleanroom';
 export * from './builtin/security-compliance';
+export * from './builtin/cold-storage';
+export * from './builtin/logistics-warehouse';
+export * from './builtin/biotech-lab';

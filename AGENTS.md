@@ -10,9 +10,12 @@ This repository powers an open-source **2D Architectural CAD + 3D Isometric Faci
 1. **General Industrial, Manufacturing, R&D Lab & Warehouse Planning** (space programming, pallet racking, machinery clearances, shipping/receiving docks).
 2. **Contractor & MEP Build-Out Bidding** (architectural blueprints, wet-wall plumbing manifolds, room pressure differentials, wall heights, finish schedules).
 3. **Optional Pluggable Industry Modules** (`src/data/domain-modules.ts`), toggled per-layout via `layout.enabledModules` or the top-bar **Modules** menu:
-   - **`cultivation`** (*Controlled-Environment Cultivation & Nursery*): Adds `cultivation` rooms, `rolling-bench` (`4×8` ebb-and-flow benches), multi-tier LED clone racks, `hvac-scrubber` (split-system AC + activated carbon scrubbers), and `-0.03" WC` negative-pressure badges.
-   - **`edible-cleanroom`** (*Edible / Food-Grade & GMP Cleanroom*): Adds washable FRP/IMP/coved-epoxy cleanrooms, `+0.05" WC` positive-pressure HEPA tags, 3-compartment sanitation sinks, grease interceptors, and modular expandable walls.
-   - **`security-compliance`** (*Regulated Security, L.A.A. & Vault Compliance*): Unlocks Sheet `SEC-101`, `isLimitedAccess` (`L.A.A.`) room perimeters, `security-camera` (with interactive 0°–360° FOV cones), `access-control` badge readers, and `secure-vault` cages.
+   - **`cultivation`** (*Controlled-Environment Agriculture & CEA*): Adds sealed flowering & veg canopy rooms, drying/curing suites, automated fertigation dosing skids, `rolling-bench` (`4×8` ebb-and-flow benches), LED clone racks, split AC + scrubbers, and `-0.03" WC` negative-pressure badges.
+   - **`edible-cleanroom`** (*Edible / Food-Grade & GMP Cleanroom*): Adds washable FRP/IMP cleanrooms, personnel gowning airlocks (PAL), `+0.05" WC` positive-pressure HEPA tags, commercial kitchen Type-1 hoods, 3-compartment pot sinks, grease interceptors, and inline packaging conveyors.
+   - **`security-compliance`** (*Regulated Security, L.A.A. & Vault Compliance*): Unlocks Sheet `SEC-101`, `isLimitedAccess` (`L.A.A.`) perimeters, Security Operations Center (SOC), interlocked mantraps, 24/7 security cameras with rotatable FOV cones, badge readers, optical turnstiles, and secure vaults.
+   - **`cold-storage`** (*Industrial Cold Storage & Refrigerated Logistics*): Adds sub-zero blast freezers (`-20°F`), medium-temp coolers (`36°F`), refrigerated cross-dock aprons (`45°F`), compressor engine rooms, ceiling blast evaporators, and high-speed insulated thermal doors.
+   - **`logistics-warehouse`** (*Logistics, Warehousing & Fulfillment*): Adds cross-dock loading bays with hydraulic pit levelers, high-bay pallet racking aisles, e-commerce pick/pack fulfillment stations, forklift battery charging bays, and pallet wrappers.
+   - **`biotech-lab`** (*Biotechnology, Life Sciences & R&D Lab*): Adds BSL-2 molecular biology wet labs, cell culture cleanrooms, analytical chemistry fume hoods, pass-through autoclaves, -80°C cryo biorepositories, and modular lab island benches.
 
 ---
 

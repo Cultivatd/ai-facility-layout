@@ -19,11 +19,15 @@ describe('domain-modules & pluggable module registry', () => {
     resetModuleRegistry();
   });
 
-  it('defines the three core pluggable modules', () => {
+  it('defines the core pluggable modules', () => {
     const moduleIds = DOMAIN_MODULES.map((m) => m.id);
+    expect(moduleIds).toHaveLength(6);
     expect(moduleIds).toContain('cultivation');
     expect(moduleIds).toContain('edible-cleanroom');
     expect(moduleIds).toContain('security-compliance');
+    expect(moduleIds).toContain('cold-storage');
+    expect(moduleIds).toContain('logistics-warehouse');
+    expect(moduleIds).toContain('biotech-lab');
   });
 
   it('provides complete metadata and feature lists for each module', () => {
