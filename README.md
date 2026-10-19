@@ -108,8 +108,11 @@ The studio includes a core general-purpose industrial engine and **pluggable dom
 
 ### Installation
 
+> [!TIP]
+> **Starting your own facility design?** Click the green **"Use this template"** button at the top of the [GitHub repository](https://github.com/Cultivatd/ai-facility-layout) to generate a clean, independent repository under your own account (or organization), then clone your new repository.
+
 ```bash
-# 1. Clone the repository
+# 1. Clone your repository (or this template)
 git clone https://github.com/Cultivatd/ai-facility-layout.git
 cd ai-facility-layout
 
