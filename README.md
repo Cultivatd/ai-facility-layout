@@ -389,6 +389,12 @@ We welcome contributions from architects, facility engineers, software developer
 ### Development Workflow
 
 ```bash
+# Run unit & integration test suite (Vitest)
+npm test
+
+# Run tests with code coverage report
+npm run test:coverage
+
 # Typecheck the codebase
 npx tsc --noEmit
 

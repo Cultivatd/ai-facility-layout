@@ -1,4 +1,5 @@
-import { defineConfig, Plugin } from 'vite';
+import { defineConfig } from 'vitest/config';
+import type { Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -297,5 +298,15 @@ export default defineConfig({
   plugins: [react(), facilityLayoutDiskSyncPlugin()],
   server: {
     port: 5173,
+  },
+  test: {
+    globals: true,
+    environment: 'happy-dom',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
+      exclude: ['src/main.tsx', 'src/**/*.d.ts'],
+    },
   },
 });
